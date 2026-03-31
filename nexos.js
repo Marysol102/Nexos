@@ -15,12 +15,17 @@ const firebaseConfig = {
   appId:             "1:958984288633:web:c88980de5de0a5422597a8"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
+let db = null;
+try {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.database();
+} catch (e) {
+  console.warn('Firebase no disponible:', e);
+}
 
 // Lee los overrides de un día desde Firebase
-// Devuelve objeto { yellow: "catName", green: "catName", ... } o {}
 async function fetchOverrides(dayIdx) {
+  if (!db) return {};
   try {
     const snap = await db.ref(`nexos/overrides/${dayIdx}`).get();
     return snap.exists() ? snap.val() : {};
@@ -31,41 +36,39 @@ async function fetchOverrides(dayIdx) {
 
 // Guarda overrides completos de un día
 async function saveOverrides(dayIdx, overrides) {
+  if (!db) throw new Error('Firebase no disponible');
   await db.ref(`nexos/overrides/${dayIdx}`).set(overrides);
 }
 
 // Borra overrides de un día
 async function clearOverridesFirebase(dayIdx) {
+  if (!db) return;
   await db.ref(`nexos/overrides/${dayIdx}`).remove();
 }
 
 // Guarda una sugerencia nueva en Firebase
 async function saveSuggestion(cat, words) {
+  if (!db) throw new Error('Firebase no disponible');
   const key  = db.ref('nexos/suggestions').push().key;
-  const data = {
-    cat,
-    words,
-    ts: Date.now(),
-    read: false
-  };
+  const data = { cat, words, ts: Date.now(), read: false };
   await db.ref(`nexos/suggestions/${key}`).set(data);
 }
 
 // Lee todas las sugerencias no leídas
 async function fetchSuggestions() {
+  if (!db) return [];
   try {
     const snap = await db.ref('nexos/suggestions').get();
     if (!snap.exists()) return [];
     const all = [];
-    snap.forEach(child => {
-      all.push({ id: child.key, ...child.val() });
-    });
+    snap.forEach(child => all.push({ id: child.key, ...child.val() }));
     return all.filter(s => !s.read).sort((a, b) => b.ts - a.ts);
   } catch { return []; }
 }
 
 // Marca una sugerencia como leída
 async function dismissSuggestion(id) {
+  if (!db) return;
   await db.ref(`nexos/suggestions/${id}/read`).set(true);
 }
 
@@ -710,6 +713,7 @@ async function loadGodSuggestions() {
 }
 
 
+function closeGodPanel() {
   document.getElementById('god-overlay').classList.add('hidden');
   document.getElementById('god-status').textContent = '';
 }
