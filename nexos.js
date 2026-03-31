@@ -327,12 +327,12 @@ function solvedWords() { return solved.flatMap(g => g.words); }
 function remaining()   { return order.filter(w => !solvedWords().includes(w)); }
 
 function renderHintPips() {
-  const wrap = document.getElementById('hint-counter-wrap');
+  const btn  = document.getElementById('btn-hint');
   const left = MAX_HINTS - hints;
-  if (left === 3) wrap.textContent = '🔋 3 Pistas';
-  else if (left === 2) wrap.textContent = '🔋 2 Pistas';
-  else if (left === 1) wrap.textContent = '🔋 1 Pista';
-  else wrap.textContent = '🪫 Sin pistas';
+  if (left === 3) btn.textContent = '🔋 3 Pistas';
+  else if (left === 2) btn.textContent = '🔋 2 Pistas';
+  else if (left === 1) btn.textContent = '🔋 1 Pista';
+  else btn.textContent = '🪫 Sin pistas';
 }
 
 function render() {
@@ -486,6 +486,12 @@ function buildEmojiGrid() {
   }).join('\n');
 }
 
+function statsText() {
+  const errTxt  = mistakes === 0 ? 'sin errores' : `${mistakes} error${mistakes !== 1 ? 'es' : ''}`;
+  const hintTxt = hints === 0    ? 'sin pistas'  : `${hints} pista${hints !== 1 ? 's' : ''}`;
+  return `${errTxt} · ${hintTxt}`;
+}
+
 function showModal() {
   const won    = solved.length === puzzle.grupos.length;
   const today  = getTodayIdx();
@@ -499,7 +505,7 @@ function showModal() {
   document.getElementById('m-emoji').textContent = won ? '🎉' : '😔';
   document.getElementById('m-title').textContent = won ? '¡Enhorabuena!' : 'Hasta la próxima…';
   document.getElementById('m-sub').textContent   = won
-    ? `Resolviste NEXOS ${tag}${mistakes === 0 ? ' sin errores 🏆' : ` con ${mistakes} error${mistakes !== 1 ? 'es' : ''}`}`
+    ? `NEXOS ${tag} · ${statsText()}`
     : `NEXOS ${tag} · Solución:`;
 
   const sol = document.getElementById('m-solution');
@@ -535,7 +541,7 @@ function shareResult() {
     : isPast
       ? `#${viewDay + 1} (${formatDate(viewDay, { day: 'numeric', month: 'long' })})`
       : `#${viewDay + 1}`;
-  doShare(`NEXOS ${tag}\n${document.getElementById('m-grid').textContent}\n\nhttps://is.gd/NEXOS`);
+  doShare(`NEXOS ${tag}\n${document.getElementById('m-grid').textContent}\n${statsText()}\nhttps://is.gd/NEXOS`);
 }
 
 function shareReto() {
