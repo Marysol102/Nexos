@@ -89,12 +89,10 @@ const COLORS          = ['yellow', 'green', 'blue', 'purple'];
 //  DÍAS
 // ─────────────────────────────────────────────────────────────
 function getTodayIdx() {
-  // Usamos la fecha local del usuario en formato YYYY-MM-DD
-  // para evitar desfases por zona horaria
   const now    = new Date();
-  const local  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const origin = new Date(2025, 0, 1);
-  return Math.floor((local - origin) / 86400000);
+  const utcNow = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const utcOri = Date.UTC(2025, 0, 1);
+  return Math.floor((utcNow - utcOri) / 86400000);
 }
 
 function dayIdxToDate(idx) {
