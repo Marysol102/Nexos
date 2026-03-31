@@ -492,10 +492,6 @@ function showModal() {
 
   document.getElementById('m-grid').textContent = buildEmojiGrid();
 
-  const retoBtn = document.getElementById('btn-reto');
-  if (isReto || isPast) { retoBtn.classList.add('hidden'); }
-  else { retoBtn.classList.remove('hidden'); retoBtn.onclick = shareReto; }
-
   document.getElementById('modal-overlay').classList.remove('hidden');
 }
 
