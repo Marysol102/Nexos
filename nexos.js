@@ -518,7 +518,7 @@ function shareResult() {
     : isPast
       ? `#${viewDay + 1} (${formatDate(viewDay, { day: 'numeric', month: 'long' })})`
       : `#${viewDay + 1}`;
-  doShare(`NEXOS ${tag}\n${document.getElementById('m-grid').textContent}\n\nhttps://marydeveloper.github.io/nexos/`);
+  doShare(`NEXOS ${tag}\n${document.getElementById('m-grid').textContent}\n\nhttps://is.gd/NEXOS`);
 }
 
 function shareReto() {
