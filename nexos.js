@@ -177,6 +177,8 @@ function allCategories() {
 //  ESTADO DEL JUEGO
 // ─────────────────────────────────────────────────────────────
 let puzzle, selected, solved, mistakes, history, gameOver, order;
+let hints     = 0;
+let hintTiles = {};   // { color: [word, word, ...] }
 let isReto  = false;
 let retoIdx = null;
 let viewDay = getTodayIdx();
@@ -187,6 +189,8 @@ function resetState() {
   mistakes = 0;
   history  = [];
   gameOver = false;
+  hints    = 0;
+  hintTiles = {};   // { color: [word, word, ...] }
   order    = shuffle(puzzle.grupos.flatMap(g => g.words));
 }
 
@@ -202,7 +206,7 @@ function loadSave(key) {
 
 function save() {
   try {
-    const data = { solved, mistakes, history, gameOver, order };
+    const data = { solved, mistakes, history, gameOver, order, hints, hintTiles };
     localStorage.setItem(
       isReto ? retoSaveKey() : saveKey(viewDay),
       JSON.stringify(isReto ? { retoIdx, ...data } : data)
@@ -259,6 +263,8 @@ async function loadDay(dayIdx) {
   const sv = loadSave(saveKey(dayIdx));
   if (sv) {
     ({ solved, mistakes, history, gameOver, order } = sv);
+    hints     = sv.hints     || 0;
+    hintTiles = sv.hintTiles || {};
     if (!order || order.length === 0) {
       const solvedW = sv.solved.flatMap(g => g.words);
       order = shuffle(puzzle.grupos.flatMap(g => g.words).filter(w => !solvedW.includes(w)));
@@ -320,10 +326,20 @@ function updateDateLabel() {
 function solvedWords() { return solved.flatMap(g => g.words); }
 function remaining()   { return order.filter(w => !solvedWords().includes(w)); }
 
+function renderHintPips() {
+  const wrap = document.getElementById('hint-counter-wrap');
+  const left = MAX_HINTS - hints;
+  if (left === 3) wrap.textContent = '🔋 3 Pistas';
+  else if (left === 2) wrap.textContent = '🔋 2 Pistas';
+  else if (left === 1) wrap.textContent = '🔋 1 Pista';
+  else wrap.textContent = '🪫 Sin pistas';
+}
+
 function render() {
   renderSolved();
   renderGrid();
   renderDots();
+  renderHintPips();
   updateBtns();
 }
 
@@ -352,6 +368,10 @@ function renderGrid() {
   order.forEach(word => {
     const t = document.createElement('div');
     t.className = 'tile' + (selected.includes(word) ? ' selected' : '');
+    // Aplicar color de pista si corresponde
+    for (const [color, words] of Object.entries(hintTiles)) {
+      if (words.includes(word)) { t.classList.add(`hinted-${color}`); break; }
+    }
     t.textContent = word;
     t.dataset.word = word;
     t.style.fontSize = tileFont(word);
@@ -382,6 +402,7 @@ function updateBtns() {
   document.getElementById('btn-clear').disabled   = selected.length === 0 || gameOver;
   document.getElementById('btn-submit').disabled  = selected.length !== 4 || gameOver;
   document.getElementById('btn-shuffle').disabled = gameOver;
+  document.getElementById('btn-hint').disabled    = hints >= 3 || gameOver;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -851,6 +872,93 @@ function showGodStatus(msg, color = '#7bc67e') {
   el.style.color = color;
   setTimeout(() => { el.textContent = ''; }, 3000);
 }
+
+// ─────────────────────────────────────────────────────────────
+//  SISTEMA DE PISTAS
+// ─────────────────────────────────────────────────────────────
+const MAX_HINTS = 3;
+
+function showHintModal(icon, msg, showConfirm) {
+  document.getElementById('hint-icon').textContent = icon;
+  document.getElementById('hint-msg').textContent  = msg;
+  const btns = document.getElementById('hint-btns');
+  btns.innerHTML = '';
+
+  if (showConfirm) {
+    const yes = document.createElement('button');
+    yes.className   = 'hint-modal-btn yes';
+    yes.textContent = 'Sí, úsala';
+    yes.onclick     = () => { closeHintModal(); applyHint(); };
+
+    const no = document.createElement('button');
+    no.className   = 'hint-modal-btn no';
+    no.textContent = 'Cancelar';
+    no.onclick     = closeHintModal;
+
+    btns.appendChild(no);
+    btns.appendChild(yes);
+  } else {
+    const ok = document.createElement('button');
+    ok.className   = 'hint-modal-btn yes';
+    ok.textContent = '¡Vale!';
+    ok.style.flex  = 'none';
+    ok.style.width = '100%';
+    ok.onclick     = closeHintModal;
+    btns.appendChild(ok);
+  }
+
+  document.getElementById('hint-overlay').classList.remove('hidden');
+}
+
+function closeHintModal() {
+  document.getElementById('hint-overlay').classList.add('hidden');
+}
+
+function requestHint() {
+  if (hints >= MAX_HINTS || gameOver) return;
+
+  const noAttempts = mistakes === 0 && solved.length === 0;
+  if (noAttempts) {
+    showHintModal('🙈', '¡Al menos inténtalo primero!\nUsa una pista cuando lo hayas necesitado de verdad.', false);
+    return;
+  }
+
+  const remaining = MAX_HINTS - hints;
+  const msg = remaining === 1
+    ? '¡Es tu última pista! ¿Seguro que la quieres usar?'
+    : `Te quedan ${remaining} pistas. ¿Usar una ahora?\n\nSe revelará una casilla de cada grupo pendiente.`;
+  showHintModal('💡', msg, true);
+}
+
+function applyHint() {
+  // Para cada grupo no resuelto, elegir 1 palabra no hintada aún
+  const unsolvedGroups = puzzle.grupos.filter(g =>
+    !solved.find(s => s.cat === g.cat)
+  );
+
+  unsolvedGroups.forEach(g => {
+    const alreadyHinted = hintTiles[g.color] || [];
+    // Palabras del grupo que siguen en el tablero y no están ya hintadas
+    const candidates = g.words.filter(w =>
+      !solvedWords().includes(w) && !alreadyHinted.includes(w)
+    );
+    if (candidates.length === 0) return;
+    // Elegir una al azar
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    hintTiles[g.color] = [...alreadyHinted, pick];
+  });
+
+  hints++;
+  save();
+  renderGrid();
+  renderHintPips();
+  updateBtns();
+}
+
+document.getElementById('btn-hint').addEventListener('click', requestHint);
+document.getElementById('hint-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('hint-overlay')) closeHintModal();
+});
 
 // ─────────────────────────────────────────────────────────────
 //  BOTONES DE JUEGO
