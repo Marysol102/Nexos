@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>NEXOS – Conexiones en español</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+<style>
+:root {
+  --bg:      #f4f1eb;
+  --tile-bg: #e4e0d5;
+  --sel-bg:  #4a4a4a;
+  --yellow:  #f5c842;
+  --green:   #7bc67e;
+  --blue:    #6aade4;
+  --purple:  #b885d8;
+  --missed:  #c97b6e;
+  --text:    #1a1a1a;
+  --muted:   #777;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center;
+  padding-bottom: 50px;
+}
+
+/* ── HEADER ── */
+header {
+  width: 100%; max-width: 520px;
+  border-bottom: 1px solid #ccc9be;
+  padding: 12px 16px; text-align: center;
+}
+.title {
+  font-family: 'Playfair Display', serif;
+  font-size: 2.2rem; letter-spacing: 0.15em; color: var(--text);
+}
+.day-nav {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-top: 5px;
+}
+.nav-arrow {
+  background: none; border: none; font-size: 1.1rem; color: var(--text);
+  cursor: pointer; padding: 2px 6px; border-radius: 6px;
+  transition: background 0.12s; line-height: 1;
+}
+.nav-arrow:hover:not(:disabled) { background: #e0dbd0; }
+.nav-arrow:disabled { opacity: 0.2; cursor: default; }
+.date-label {
+  font-size: 0.75rem; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.08em;
+  min-width: 180px; text-align: center;
+}
+.btn-today {
+  display: none; margin: 0 auto 4px;
+  background: var(--text); color: var(--bg);
+  border: none; border-radius: 20px; padding: 4px 14px;
+  font-family: 'Nunito', sans-serif; font-weight: 800;
+  font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; transition: background 0.12s;
+}
+.btn-today.visible { display: block; }
+.btn-today:hover { background: #3a3a3a; }
+
+/* ── RETO BANNER ── */
+#reto-banner {
+  width: 100%; max-width: 520px;
+  background: var(--purple); color: #fff;
+  text-align: center; font-weight: 800;
+  font-size: 0.8rem; letter-spacing: 0.08em;
+  padding: 7px 16px; text-transform: uppercase;
+}
+#reto-banner.hidden { display: none; }
+
+/* ── GAME ── */
+.game { width: 100%; max-width: 520px; padding: 0 12px; margin-top: 16px; }
+.instruction {
+  text-align: center; font-weight: 700; font-size: 0.85rem; color: var(--muted);
+  margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+#past-badge {
+  display: none; text-align: center; font-size: 0.75rem; font-weight: 700;
+  color: #888; text-transform: uppercase; letter-spacing: 0.06em;
+  margin-bottom: 10px; padding: 5px 12px; background: #e8e4da;
+  border-radius: 20px; width: fit-content; margin-left: auto; margin-right: auto;
+}
+#past-badge.visible { display: block; }
+
+/* ── SOLVED / MISSED BANNERS ── */
+.solved-group {
+  border-radius: 10px; padding: 11px 14px;
+  margin-bottom: 8px; text-align: center; animation: fadeIn 0.35s ease;
+}
+.solved-group.yellow { background: var(--yellow); }
+.solved-group.green  { background: var(--green);  }
+.solved-group.blue   { background: var(--blue);   }
+.solved-group.purple { background: var(--purple); }
+.solved-group.missed { background: var(--missed); }
+.solved-cat   { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: #111; }
+.solved-words { font-size: 0.88rem; font-weight: 600; color: #111; margin-top: 2px; }
+.solved-group.missed .solved-cat,
+.solved-group.missed .solved-words { color: #fff; }
+.missed-label {
+  display: inline-block; font-size: 0.6rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  background: rgba(0,0,0,0.18); color: #fff;
+  border-radius: 10px; padding: 1px 7px; margin-bottom: 3px;
+}
+
+/* ── GRID ── */
+.grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 8px; margin-bottom: 14px;
+}
+.tile {
+  background: var(--tile-bg); border-radius: 8px; padding: 8px 4px; min-height: 60px;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.03em; line-height: 1.15; word-break: break-word;
+  cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent;
+  transition: background 0.13s, transform 0.1s; color: var(--text);
+}
+.tile:active   { transform: scale(0.93); }
+.tile.selected { background: var(--sel-bg); color: #fff; }
+.tile.shake    { animation: shake 0.4s ease forwards; }
+.tile.pop      { animation: pop 0.22s ease forwards; }
+
+/* ── HINT / ERRORS ── */
+.one-away { text-align: center; min-height: 20px; font-size: 0.82rem; font-weight: 700; color: #555; margin-bottom: 6px; }
+.mistakes { text-align: center; font-size: 0.82rem; font-weight: 700; color: var(--muted); margin-bottom: 16px; }
+.dots { display: inline-flex; gap: 8px; vertical-align: middle; margin-left: 6px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; background: #3a3a3a; transition: background 0.3s; }
+.dot.gone { background: #ccc9be; }
+
+/* ── CONTROLES ── */
+.controls { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.btn {
+  border: 2px solid var(--text); background: transparent; color: var(--text);
+  border-radius: 30px; padding: 10px 20px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.85rem;
+  cursor: pointer; transition: background 0.13s, color 0.13s;
+}
+.btn:not(:disabled):hover { background: var(--text); color: var(--bg); }
+.btn.primary { background: var(--text); color: var(--bg); }
+.btn.primary:not(:disabled):hover { background: #3a3a3a; }
+.btn:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+
+/* ── MODAL RESULTADO ── */
+.overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.52);
+  display: flex; align-items: flex-start; justify-content: center;
+  z-index: 99; padding: 20px; overflow-y: auto; animation: fadeIn 0.22s ease;
+}
+.overlay.hidden { display: none; }
+.modal {
+  background: var(--bg); border-radius: 18px;
+  padding: 36px 20px 24px; max-width: 400px; width: 100%;
+  text-align: center; position: relative; margin: auto;
+}
+.modal-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; font-size: 1.3rem; color: var(--muted);
+  cursor: pointer; line-height: 1; padding: 4px 6px; border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+.modal-close:hover { background: #e0dbd0; color: var(--text); }
+.modal-emoji { font-size: 2.4rem; margin-bottom: 6px; }
+.modal-title { font-family: 'Playfair Display', serif; font-size: 1.55rem; margin-bottom: 4px; }
+.modal-sub   { font-size: 0.83rem; color: var(--muted); margin-bottom: 16px; }
+.modal-solution { margin-bottom: 16px; display: flex; flex-direction: column; gap: 7px; }
+.modal-solution .solved-group { margin-bottom: 0; animation: none; }
+.share-grid {
+  font-family: monospace; font-size: 1.3rem; letter-spacing: 3px; line-height: 2;
+  margin-bottom: 16px; background: #eae6dc; border-radius: 10px;
+  padding: 12px; word-break: break-all; display: none;
+}
+.modal-btns { display: flex; flex-direction: column; gap: 9px; }
+.btn-modal {
+  width: 100%; border: none; border-radius: 30px; padding: 13px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.9rem;
+  cursor: pointer; transition: background 0.13s;
+}
+.btn-modal.primary   { background: var(--text); color: var(--bg); }
+.btn-modal.primary:hover { background: #3a3a3a; }
+.btn-modal.secondary { background: transparent; color: var(--text); border: 2px solid var(--text); }
+.btn-modal.secondary:hover { background: var(--text); color: var(--bg); }
+.btn-modal.hidden    { display: none; }
+
+/* ════════════════════════════════════════════════════
+   🔱  MODO DIOS
+════════════════════════════════════════════════════ */
+#god-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 200; padding: 20px; animation: fadeIn 0.2s ease;
+}
+#god-overlay.hidden { display: none; }
+
+#god-panel {
+  background: #1a1a2e;
+  border: 1px solid #f0d060;
+  border-radius: 16px;
+  padding: 24px 20px 20px;
+  max-width: 420px; width: 100%;
+  position: relative;
+  box-shadow: 0 0 40px rgba(240,208,96,0.15);
+}
+
+.god-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px;
+}
+.god-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem; color: #f0d060;
+  letter-spacing: 0.1em;
+}
+.god-close {
+  background: none; border: none; color: #888;
+  font-size: 1.2rem; cursor: pointer; padding: 3px 6px;
+  border-radius: 6px; transition: color 0.12s;
+}
+.god-close:hover { color: #f0d060; }
+
+/* Navegador de días dentro del panel */
+.god-day-nav {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; margin-bottom: 20px;
+}
+.god-nav-arrow {
+  background: none; border: 1px solid #444; color: #aaa;
+  font-size: 1rem; cursor: pointer; padding: 3px 10px;
+  border-radius: 6px; transition: border-color 0.12s, color 0.12s;
+}
+.god-nav-arrow:hover:not(:disabled) { border-color: #f0d060; color: #f0d060; }
+.god-nav-arrow:disabled { opacity: 0.25; cursor: default; }
+.god-date {
+  font-size: 0.8rem; font-weight: 700; color: #ccc;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  min-width: 180px; text-align: center;
+}
+
+/* Filas de categorías */
+.god-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+.god-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.god-color-dot {
+  width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+}
+.god-color-dot.yellow { background: var(--yellow); }
+.god-color-dot.green  { background: var(--green);  }
+.god-color-dot.blue   { background: var(--blue);   }
+.god-color-dot.purple { background: var(--purple); }
+
+.god-select {
+  flex: 1;
+  background: #2a2a3e; color: #eee;
+  border: 1px solid #444; border-radius: 8px;
+  padding: 8px 10px;
+  font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.82rem;
+  cursor: pointer; transition: border-color 0.12s;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+  padding-right: 28px;
+}
+.god-select:focus { outline: none; border-color: #f0d060; }
+.god-select.overridden { border-color: #f0d060; color: #f0d060; }
+
+.god-override-badge {
+  font-size: 0.6rem; font-weight: 800; color: #f0d060;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  opacity: 0;
+  transition: opacity 0.2s;
+  flex-shrink: 0; min-width: 24px;
+}
+.god-override-badge.visible { opacity: 1; }
+
+/* Botones del panel */
+.god-btns {
+  display: flex; gap: 10px;
+}
+.god-btn {
+  flex: 1; border: none; border-radius: 10px; padding: 11px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.85rem;
+  cursor: pointer; transition: all 0.13s;
+}
+.god-btn.save {
+  background: #f0d060; color: #1a1a2e;
+}
+.god-btn.save:hover { background: #f5dc78; }
+.god-btn.clear {
+  background: transparent; color: #888;
+  border: 1px solid #444;
+}
+.god-btn.clear:hover { border-color: var(--missed); color: var(--missed); }
+
+/* Estado del guardado */
+.god-status {
+  text-align: center; font-size: 0.75rem; font-weight: 700;
+  min-height: 18px; margin-top: 10px;
+  color: #7bc67e; letter-spacing: 0.05em;
+}
+
+/* ── MODAL REGLAS ── */
+#rules-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.52);
+  display: flex; align-items: flex-start; justify-content: center;
+  z-index: 99; padding: 20px; overflow-y: auto; animation: fadeIn 0.22s ease;
+}
+#rules-overlay.hidden { display: none; }
+
+#rules-modal {
+  background: var(--bg); border-radius: 18px;
+  padding: 36px 22px 26px; max-width: 400px; width: 100%;
+  position: relative; margin: auto;
+}
+.rules-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; font-size: 1.3rem; color: var(--muted);
+  cursor: pointer; line-height: 1; padding: 4px 6px; border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+.rules-close:hover { background: #e0dbd0; color: var(--text); }
+
+.rules-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem; color: var(--text);
+  margin-bottom: 14px; text-align: center;
+}
+.rules-body { font-size: 0.88rem; color: var(--text); line-height: 1.65; }
+.rules-body p { margin-bottom: 10px; }
+.rules-body p:last-child { margin-bottom: 0; }
+
+.rules-colors {
+  display: flex; flex-direction: column; gap: 7px;
+  margin: 14px 0;
+}
+.rules-color-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 0.85rem; font-weight: 700;
+}
+.rules-dot {
+  width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0;
+}
+.rules-dot.yellow { background: var(--yellow); }
+.rules-dot.green  { background: var(--green);  }
+.rules-dot.blue   { background: var(--blue);   }
+.rules-dot.purple { background: var(--purple); }
+
+.rules-example {
+  background: #eae6dc; border-radius: 10px;
+  padding: 12px 14px; margin: 12px 0;
+  font-size: 0.82rem; line-height: 1.7;
+}
+.rules-example strong { font-weight: 800; }
+
+/* ── MODAL SUGERENCIA ── */
+#suggest-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.52);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 150; padding: 20px; animation: fadeIn 0.22s ease;
+}
+#suggest-overlay.hidden { display: none; }
+#suggest-modal {
+  background: var(--bg); border-radius: 18px;
+  padding: 36px 22px 24px; max-width: 380px; width: 100%;
+  position: relative;
+}
+.suggest-close {
+  position: absolute; top: 12px; right: 14px;
+  background: none; border: none; font-size: 1.3rem; color: var(--muted);
+  cursor: pointer; padding: 4px 6px; border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+.suggest-close:hover { background: #e0dbd0; color: var(--text); }
+.suggest-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem; color: var(--text);
+  margin-bottom: 6px; text-align: center;
+}
+.suggest-sub {
+  font-size: 0.8rem; color: var(--muted);
+  text-align: center; margin-bottom: 18px; line-height: 1.5;
+}
+.suggest-label {
+  display: block; font-size: 0.75rem; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--muted); margin-bottom: 5px;
+}
+.suggest-input, .suggest-textarea {
+  width: 100%; background: #eae6dc; border: 2px solid transparent;
+  border-radius: 10px; padding: 10px 12px;
+  font-family: 'Nunito', sans-serif; font-weight: 700; font-size: 0.9rem;
+  color: var(--text); transition: border-color 0.15s;
+  margin-bottom: 14px; resize: none;
+}
+.suggest-input:focus, .suggest-textarea:focus {
+  outline: none; border-color: var(--text);
+}
+.suggest-textarea { height: 80px; }
+.suggest-hint {
+  font-size: 0.72rem; color: var(--muted);
+  margin-top: -10px; margin-bottom: 16px; line-height: 1.4;
+}
+.suggest-send {
+  width: 100%; border: none; border-radius: 30px; padding: 13px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.9rem;
+  background: var(--text); color: var(--bg);
+  cursor: pointer; transition: background 0.13s;
+}
+.suggest-send:hover:not(:disabled) { background: #3a3a3a; }
+.suggest-send:disabled { opacity: 0.4; cursor: default; }
+.suggest-status {
+  text-align: center; font-size: 0.78rem; font-weight: 700;
+  min-height: 18px; margin-top: 10px; color: #7bc67e;
+}
+
+/* ── BOTÓN SUGERIR EN REGLAS ── */
+.rules-suggest-btn {
+  display: block; width: 100%; margin-top: 20px;
+  border: 2px solid var(--text); background: transparent; color: var(--text);
+  border-radius: 30px; padding: 11px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.88rem;
+  cursor: pointer; transition: background 0.13s, color 0.13s;
+}
+.rules-suggest-btn:hover { background: var(--text); color: var(--bg); }
+
+/* ── TABS DEL MODO DIOS ── */
+.god-tabs {
+  display: flex; gap: 6px; margin-bottom: 16px;
+}
+.god-tab {
+  flex: 1; background: transparent; border: 1px solid #444;
+  color: #888; border-radius: 8px; padding: 7px 4px;
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.78rem;
+  cursor: pointer; transition: all 0.13s; text-align: center;
+  position: relative;
+}
+.god-tab:hover { border-color: #f0d060; color: #f0d060; }
+.god-tab.active { background: #f0d060; color: #1a1a2e; border-color: #f0d060; }
+.god-tab-badge {
+  position: absolute; top: -6px; right: -6px;
+  background: var(--missed); color: #fff;
+  font-size: 0.62rem; font-weight: 800;
+  border-radius: 10px; padding: 1px 6px;
+  min-width: 18px; text-align: center;
+  display: none;
+}
+.god-tab-badge.visible { display: block; }
+
+/* ── CONTENIDO TABS ── */
+.god-tab-content { display: none; }
+.god-tab-content.active { display: block; }
+
+/* ── TARJETAS DE SUGERENCIA ── */
+.suggest-list {
+  display: flex; flex-direction: column; gap: 10px;
+  max-height: 280px; overflow-y: auto;
+  margin-bottom: 14px;
+  padding-right: 2px;
+}
+.suggest-card {
+  background: #2a2a3e; border-radius: 10px;
+  padding: 12px 14px; position: relative;
+}
+.suggest-card-cat {
+  font-size: 0.85rem; font-weight: 800; color: #f0d060;
+  margin-bottom: 4px;
+}
+.suggest-card-words {
+  font-size: 0.78rem; color: #bbb; line-height: 1.5;
+  word-break: break-word;
+}
+.suggest-card-date {
+  font-size: 0.65rem; color: #666;
+  margin-top: 6px; text-transform: uppercase; letter-spacing: 0.05em;
+}
+.suggest-card-dismiss {
+  position: absolute; top: 8px; right: 10px;
+  background: none; border: none; color: #555;
+  font-size: 0.9rem; cursor: pointer; padding: 2px 5px;
+  border-radius: 4px; transition: color 0.12s;
+}
+.suggest-card-dismiss:hover { color: var(--missed); }
+.suggest-empty {
+  text-align: center; color: #555; font-size: 0.82rem;
+  font-weight: 700; padding: 30px 0;
+}
+
+/* ── ANIMACIONES ── */
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20%     { transform: translateX(-7px); }
+  40%     { transform: translateX(7px); }
+  60%     { transform: translateX(-5px); }
+  80%     { transform: translateX(5px); }
+}
+@keyframes pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title">NEXOS</div>
+  <div class="day-nav">
+    <button class="nav-arrow" id="btn-prev" title="Día anterior">&#8249;</button>
+    <div class="date-label" id="date-label"></div>
+    <button class="nav-arrow" id="btn-next" title="Día siguiente" disabled>&#8250;</button>
+  </div>
+  <button class="btn-today" id="btn-today">↩ Volver a hoy</button>
+</header>
+
+<div id="reto-banner" class="hidden">🔗 Estás jugando un Reto</div>
+
+<div class="game">
+  <p class="instruction">Crea cuatro grupos de cuatro</p>
+  <div id="past-badge">📅 Puzzle anterior</div>
+  <div id="solved-container"></div>
+  <div class="grid" id="grid"></div>
+  <div class="one-away" id="one-away"></div>
+  <div class="mistakes">
+    Errores restantes:
+    <span class="dots" id="dots"></span>
+  </div>
+  <div class="controls">
+    <button class="btn"         id="btn-info">?</button>
+    <button class="btn"         id="btn-shuffle">Mezclar</button>
+    <button class="btn"         id="btn-clear"   disabled>Limpiar</button>
+    <button class="btn primary" id="btn-submit"  disabled>Enviar</button>
+  </div>
+</div>
+
+<!-- MODAL RESULTADO -->
+<div class="overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <button class="modal-close" id="btn-close-modal">✕</button>
+    <div class="modal-emoji" id="m-emoji"></div>
+    <div class="modal-title"  id="m-title"></div>
+    <div class="modal-sub"    id="m-sub"></div>
+    <div class="modal-solution" id="m-solution"></div>
+    <div class="share-grid"   id="m-grid"></div>
+    <div class="modal-btns">
+      <button class="btn-modal primary"   id="btn-share">📋 Compartir resultado</button>
+      <button class="btn-modal secondary" id="btn-reto">🔗 Retar a alguien</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL REGLAS -->
+<div id="rules-overlay" class="hidden">
+  <div id="rules-modal">
+    <button class="rules-close" id="btn-close-rules">✕</button>
+    <div class="rules-title">¿Cómo se juega?</div>
+    <div class="rules-body">
+
+      <p>Encuentra los <strong>cuatro grupos de cuatro palabras</strong> que comparten algo en común.</p>
+
+      <div class="rules-example">
+        <strong>PECES:</strong> Salmón · Trucha · Lubina · Dorada<br>
+        <strong>___ ROJO/A:</strong> Caperucita · Alarma · Semáforo · Planeta
+      </div>
+
+      <p>Selecciona cuatro palabras y pulsa <strong>Enviar</strong>. Si aciertas, el grupo se revela con su color. Tienes <strong>4 errores</strong> antes de que termine la partida.</p>
+
+      <p>¡Ojo! Algunas palabras parecen encajar en varios grupos. Solo hay <strong>una solución correcta</strong>.</p>
+
+      <p>Los colores indican la dificultad del grupo:</p>
+
+      <div class="rules-colors">
+        <div class="rules-color-row"><div class="rules-dot yellow"></div> Fácil</div>
+        <div class="rules-color-row"><div class="rules-dot green"></div>  Media</div>
+        <div class="rules-color-row"><div class="rules-dot blue"></div>   Difícil</div>
+        <div class="rules-color-row"><div class="rules-dot purple"></div> Trampa</div>
+      </div>
+
+      <p>Cada día hay un puzzle nuevo. Puedes volver a días anteriores con las flechas del header. Cuando termines, comparte tu resultado o reta a alguien con tu mismo puzzle.</p>
+
+      <button class="rules-suggest-btn" id="btn-open-suggest">💡 Sugerir una categoría</button>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SUGERENCIA -->
+<div id="suggest-overlay" class="hidden">
+  <div id="suggest-modal">
+    <button class="suggest-close" id="btn-close-suggest">✕</button>
+    <div class="suggest-title">💡 Sugerir categoría</div>
+    <div class="suggest-sub">Tu sugerencia llegará a los creadores del juego.</div>
+
+    <label class="suggest-label" for="suggest-cat">Nombre de la categoría</label>
+    <input class="suggest-input" id="suggest-cat" type="text"
+           placeholder="Ej: Personajes de cómic" maxlength="60" autocomplete="off">
+
+    <label class="suggest-label" for="suggest-words">Palabras de ejemplo</label>
+    <textarea class="suggest-textarea" id="suggest-words"
+              placeholder="Ej: Batman, Spiderman, Asterix, Tintín"></textarea>
+    <div class="suggest-hint">Separa las palabras con comas. Cuantas más, mejor.</div>
+
+    <button class="suggest-send" id="btn-send-suggest">Enviar sugerencia</button>
+    <div class="suggest-status" id="suggest-status"></div>
+  </div>
+</div>
+
+<!-- 🔱 MODO DIOS -->
+<div id="god-overlay" class="hidden">
+  <div id="god-panel">
+    <div class="god-header">
+      <div class="god-title">🔱 Modo Dios</div>
+      <button class="god-close" id="god-close">✕</button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="god-tabs">
+      <button class="god-tab active" id="god-tab-puzzle" data-tab="puzzle">📅 Puzzle</button>
+      <button class="god-tab"        id="god-tab-suggest" data-tab="suggest">
+        💡 Sugerencias
+        <span class="god-tab-badge" id="suggest-badge"></span>
+      </button>
+    </div>
+
+    <!-- Tab: Puzzle -->
+    <div class="god-tab-content active" id="god-content-puzzle">
+      <div class="god-day-nav">
+        <button class="god-nav-arrow" id="god-prev">&#8249;</button>
+        <div class="god-date" id="god-date"></div>
+        <button class="god-nav-arrow" id="god-next">&#8250;</button>
+      </div>
+      <div class="god-rows" id="god-rows"></div>
+      <div class="god-btns">
+        <button class="god-btn clear" id="god-clear">🗑 Limpiar día</button>
+        <button class="god-btn save"  id="god-save">💾 Guardar</button>
+      </div>
+    </div>
+
+    <!-- Tab: Sugerencias -->
+    <div class="god-tab-content" id="god-content-suggest">
+      <div class="suggest-list" id="god-suggest-list"></div>
+      <button class="god-btn clear" id="god-dismiss-all"
+              style="width:100%">🗑 Marcar todas como leídas</button>
+    </div>
+
+    <div class="god-status" id="god-status"></div>
+  </div>
+</div>
+
+<script src="puzzles.js"></script>
+<script src="nexos.js"></script>
+
+</body>
+</html>
