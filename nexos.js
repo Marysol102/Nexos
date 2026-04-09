@@ -62,7 +62,7 @@ async function fetchSuggestions() {
     if (!snap.exists()) return [];
     const all = [];
     snap.forEach(child => all.push({ id: child.key, ...child.val() }));
-    return all.filter(s => !s.read).sort((a, b) => b.ts - a.ts);
+    return all.filter(s => s.read !== true).sort((a, b) => b.ts - a.ts);
   } catch { return []; }
 }
 
